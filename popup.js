@@ -1,4 +1,4 @@
-const statusEl = document.getElementById('status');
+const statusEl   = document.getElementById('status');
 const statusText = document.getElementById('statusText');
 
 function showStatus(msg, type = 'info') {
@@ -14,7 +14,6 @@ async function getActiveTab() {
 async function sendToContent(action) {
   const tab = await getActiveTab();
 
-  // Check if this is a restricted page (chrome://, etc.)
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
     showStatus('Cannot run on browser system pages.', 'error');
     return;
@@ -23,17 +22,12 @@ async function sendToContent(action) {
   try {
     await chrome.tabs.sendMessage(tab.id, { action });
     window.close();
-  } catch (err) {
-    // Content script may not be injected yet (e.g., page loaded before extension)
-    // Inject it manually then retry
+  } catch {
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-      });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
       await chrome.tabs.sendMessage(tab.id, { action });
       window.close();
-    } catch (err2) {
+    } catch {
       showStatus('Could not connect to page. Try reloading it.', 'error');
     }
   }
@@ -42,6 +36,16 @@ async function sendToContent(action) {
 document.getElementById('btnPickElement').addEventListener('click', () => {
   showStatus('Opening area selector…', 'info');
   sendToContent('startAreaSelector');
+});
+
+document.getElementById('btnViewport').addEventListener('click', () => {
+  showStatus('Capturing viewport…', 'info');
+  sendToContent('startViewportCapture');
+});
+
+document.getElementById('btnFullPage').addEventListener('click', () => {
+  showStatus('Starting full-page capture…', 'info');
+  sendToContent('startFullPageCapture');
 });
 
 document.getElementById('btnRecord').addEventListener('click', () => {
