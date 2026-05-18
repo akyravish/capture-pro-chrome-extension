@@ -80,7 +80,7 @@ document.querySelectorAll('.source-card').forEach(card => {
     const labels = {
       startAreaSelector:    'Opening area selector…',
       startViewportCapture: 'Capturing viewport…',
-      startFullPageCapture: 'Starting full-page capture…'
+      printPage:            'Opening print dialog…'
     };
 
     showStatus('statusCapture', labels[action] || 'Starting…', 'info');

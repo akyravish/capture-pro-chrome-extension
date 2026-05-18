@@ -10,7 +10,7 @@ A Chrome extension (Manifest V3) for capturing screenshots and recording your br
 |------|-------------|
 | **Selected Area** | Draw a rectangle over any part of the page and capture only that region |
 | **Visible Viewport** | Instant snapshot of exactly what is currently visible in the browser window |
-| **Full Page** | Scrolls through the entire page and stitches all strips into one tall image (capped at 15,000px) |
+| **Full Page PDF** | Opens Chrome's built-in Save as PDF dialog to save the entire page as a PDF |
 
 After every image capture a panel appears in the bottom-right corner with:
 - A thumbnail preview of the capture
@@ -56,7 +56,7 @@ Trigger captures without opening the popup. Shortcuts can be rebound at `chrome:
 |----------|--------|
 | `Alt+Shift+S` | Area selector |
 | `Alt+Shift+V` | Visible viewport capture |
-| `Alt+Shift+F` | Full page capture |
+| `Alt+Shift+F` | Full page PDF (print dialog) |
 | `Alt+Shift+R` | Start / stop recording (toggle) |
 
 > Shortcuts do nothing on restricted pages (`chrome://`, `edge://`, `about:`, etc.).

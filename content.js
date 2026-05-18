@@ -321,12 +321,15 @@ if (!window.__captureProLoaded) {
     }
 
     showToast('Capturing area…', 'info');
-    chrome.runtime.sendMessage({
-      action: 'captureElement',
-      rect,
-      devicePixelRatio: window.devicePixelRatio || 1,
-      format: _selectorFormat
-    });
+    // Wait for the browser to repaint without the canvas overlay before screenshotting
+    setTimeout(() => {
+      chrome.runtime.sendMessage({
+        action: 'captureElement',
+        rect,
+        devicePixelRatio: window.devicePixelRatio || 1,
+        format: _selectorFormat
+      });
+    }, 150);
   }
 
   function _onEscKey(e) {
@@ -633,6 +636,9 @@ if (!window.__captureProLoaded) {
         break;
       case 'startFullPageCapture':
         _runWithDelay(msg.delay, () => startFullPageCapture(msg.format));
+        break;
+      case 'printPage':
+        _runWithDelay(msg.delay, () => window.print());
         break;
 
       case 'startViewportCapture':

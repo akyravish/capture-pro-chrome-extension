@@ -14,7 +14,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   const actionMap = {
     'capture-area':     { action: 'startAreaSelector' },
     'capture-viewport': { action: 'startViewportCapture' },
-    'capture-fullpage': { action: 'startFullPageCapture' },
+    'capture-fullpage': { action: 'printPage' },
   };
 
   if (actionMap[command]) {

@@ -34,7 +34,7 @@
       "description": "Start / stop recording"
     }
   },
-  "content_scripts": [
+"content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"]
