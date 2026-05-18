@@ -377,21 +377,26 @@ if (!window.__captureProLoaded) {
   let _chunks        = [];
   let _stopBar       = null;
 
-  async function startRecording() {
+  async function startRecording({ tabSound = true, resolution = '720' } = {}) {
     if (_mediaRecorder?.state === 'recording') {
       showToast('Already recording!', 'info');
       return;
     }
+
+    const bitsPerSecond = resolution === '1080' ? 8_000_000
+                        : resolution === '480'  ? 2_000_000
+                        : 4_000_000; // 720p default
+
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 30, displaySurface: 'browser' },
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: tabSound ? { echoCancellation: true, noiseSuppression: true } : false
       });
 
       const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
         .find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
 
-      _mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
+      _mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitsPerSecond });
       _chunks = [];
 
       _mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) _chunks.push(e.data); };
@@ -498,7 +503,9 @@ if (!window.__captureProLoaded) {
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.action) {
       case 'startAreaSelector':    startAreaSelector();    break;
-      case 'startRecording':       startRecording();       break;
+      case 'startRecording':
+        startRecording({ tabSound: msg.tabSound, resolution: msg.resolution });
+        break;
       case 'startFullPageCapture': startFullPageCapture(); break;
 
       case 'startViewportCapture':
