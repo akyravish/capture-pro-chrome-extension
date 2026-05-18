@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture Pro</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0c0c0f;
+      --surface: #141418;
+      --border: #242430;
+      --accent: #7c6af7;
+      --accent-glow: rgba(124, 106, 247, 0.25);
+      --red: #f06060;
+      --red-glow: rgba(240, 96, 96, 0.2);
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --success: #56d999;
+    }
+
+    body {
+      width: 300px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      padding: 20px;
+      user-select: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .title {
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 -20px 18px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.18s ease;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.18s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-image::before { background: radial-gradient(circle at 30% 50%, var(--accent-glow), transparent 70%); }
+    .btn-image:hover { border-color: var(--accent); box-shadow: 0 4px 20px var(--accent-glow); }
+    .btn-image:hover::before { opacity: 1; }
+
+    .btn-video::before { background: radial-gradient(circle at 30% 50%, var(--red-glow), transparent 70%); }
+    .btn-video:hover { border-color: var(--red); box-shadow: 0 4px 20px var(--red-glow); }
+    .btn-video:hover::before { opacity: 1; }
+
+    .btn:active { transform: translateY(0); }
+
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .btn-image .btn-icon { background: rgba(124, 106, 247, 0.15); }
+    .btn-video .btn-icon { background: rgba(240, 96, 96, 0.15); }
+
+    .btn-text { flex: 1; }
+    .btn-title { font-weight: 600; font-size: 13px; }
+    .btn-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .btn-arrow {
+      color: var(--muted);
+      font-size: 16px;
+      transition: transform 0.18s, color 0.18s;
+    }
+    .btn:hover .btn-arrow { color: var(--text); transform: translateX(2px); }
+
+    .status {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .status.show { display: flex; }
+    .status.info { background: rgba(124,106,247,0.1); color: var(--accent); border: 1px solid rgba(124,106,247,0.2); }
+    .status.error { background: rgba(240,96,96,0.1); color: var(--red); border: 1px solid rgba(240,96,96,0.2); }
+    .status.success { background: rgba(86,217,153,0.1); color: var(--success); border: 1px solid rgba(86,217,153,0.2); }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      margin-top: 16px;
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">📸</div>
+    <div>
+      <div class="title">CAPTURE PRO</div>
+      <div class="subtitle">Element · Video · Clipboard</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Choose Action</div>
+
+  <button class="btn btn-image" id="btnPickElement">
+    <div class="btn-icon">✂️</div>
+    <div class="btn-text">
+      <div class="btn-title">Capture Area</div>
+      <div class="btn-desc">Drag to select region → copy image</div>
+    </div>
+    <span class="btn-arrow">›</span>
+  </button>
+
+  <button class="btn btn-video" id="btnRecord">
+    <div class="btn-icon">🔴</div>
+    <div class="btn-text">
+      <div class="btn-title">Record Tab</div>
+      <div class="btn-desc">Screen capture → download .webm</div>
+    </div>
+    <span class="btn-arrow">›</span>
+  </button>
+
+  <div class="status" id="status">
+    <div class="dot"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <div class="footer">MV3 · Works on all pages</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
