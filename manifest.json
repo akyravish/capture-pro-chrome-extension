@@ -16,6 +16,24 @@
   "background": {
     "service_worker": "background.js"
   },
+  "commands": {
+    "capture-area": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Area selector"
+    },
+    "capture-viewport": {
+      "suggested_key": { "default": "Alt+Shift+V" },
+      "description": "Visible viewport capture"
+    },
+    "capture-fullpage": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "Full page capture"
+    },
+    "toggle-recording": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Start / stop recording"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],

@@ -1,7 +1,9 @@
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   tabSound:   true,
-  resolution: '720'
+  resolution: '720',
+  format:     'png',
+  delay:      0
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,7 +84,25 @@ document.querySelectorAll('.source-card').forEach(card => {
     };
 
     showStatus('statusCapture', labels[action] || 'Starting…', 'info');
-    sendToContent(action);
+    sendToContent(action, { format: state.format, delay: state.delay });
+  });
+});
+
+// ── Format buttons ────────────────────────────────────────────────────────────
+document.querySelectorAll('[data-format]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-format]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.format = btn.dataset.format;
+  });
+});
+
+// ── Delay buttons ─────────────────────────────────────────────────────────────
+document.querySelectorAll('[data-delay]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-delay]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.delay = parseInt(btn.dataset.delay, 10);
   });
 });
 

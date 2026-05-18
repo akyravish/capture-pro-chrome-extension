@@ -51,7 +51,7 @@ if (!window.__captureProLoaded) {
   ═══════════════════════════════════════════ */
   let _panelDismissTimer = null;
 
-  function showCapturePanel(blob) {
+  function showCapturePanel(blob, format = 'png') {
     document.getElementById('__cp_panel')?.remove();
     clearTimeout(_panelDismissTimer);
 
@@ -133,7 +133,7 @@ if (!window.__captureProLoaded) {
     });
 
     document.getElementById('__cp_dl').addEventListener('click', () => {
-      _downloadBlob(blob, `capture-${Date.now()}.png`);
+      _downloadBlob(blob, `capture-${Date.now()}.${_ext(format)}`);
       showToast('Image downloaded!', 'success');
       dismiss();
     });
@@ -147,20 +147,74 @@ if (!window.__captureProLoaded) {
   }
 
   /* ═══════════════════════════════════════════
+     DELAY CAPTURE
+  ═══════════════════════════════════════════ */
+  let _pendingCaptureTimeout = null;
+
+  function _runWithDelay(seconds, action) {
+    if (!seconds || seconds <= 0) { action(); return; }
+
+    let remaining = seconds;
+
+    const overlay = document.createElement('div');
+    overlay.id = '__cp_countdown';
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 2147483646;
+      background: rgba(5,4,18,0.72);
+      display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, sans-serif;
+    `;
+    overlay.innerHTML = `
+      <div style="
+        font-size: 96px; font-weight: 800; color: #fff;
+        text-shadow: 0 0 40px rgba(124,106,247,0.8);
+        line-height: 1; user-select: none;
+      " id="__cp_countdown_num">${remaining}</div>
+    `;
+    document.documentElement.appendChild(overlay);
+
+    function tick() {
+      remaining--;
+      if (remaining <= 0) {
+        overlay.remove();
+        _pendingCaptureTimeout = null;
+        action();
+        return;
+      }
+      document.getElementById('__cp_countdown_num').textContent = remaining;
+      _pendingCaptureTimeout = setTimeout(tick, 1000);
+    }
+
+    _pendingCaptureTimeout = setTimeout(tick, 1000);
+
+    function _cancelOnEsc(e) {
+      if (e.key !== 'Escape') return;
+      clearTimeout(_pendingCaptureTimeout);
+      _pendingCaptureTimeout = null;
+      overlay.remove();
+      document.removeEventListener('keydown', _cancelOnEsc, true);
+      showToast('Capture cancelled', 'info');
+    }
+    document.addEventListener('keydown', _cancelOnEsc, true);
+  }
+
+  /* ═══════════════════════════════════════════
      AREA SELECTOR  (snipping-tool style)
   ═══════════════════════════════════════════ */
-  let _canvas   = null;
-  let _ctx      = null;
-  let _startX   = 0, _startY   = 0;
-  let _endX     = 0, _endY     = 0;
-  let _dragging = false;
+  let _canvas         = null;
+  let _ctx            = null;
+  let _startX         = 0, _startY = 0;
+  let _endX           = 0, _endY   = 0;
+  let _dragging       = false;
+  let _selectorFormat = 'png';
 
   const ACCENT       = '#7c6af7';
   const ACCENT_LIGHT = 'rgba(124,106,247,0.15)';
   const DIM          = 'rgba(5, 4, 18, 0.65)';
 
-  function startAreaSelector() {
+  function startAreaSelector(format = 'png') {
     if (_canvas) return;
+    _selectorFormat = format;
 
     showToast('Drag to select an area — Esc to cancel', 'info');
 
@@ -280,7 +334,8 @@ if (!window.__captureProLoaded) {
     chrome.runtime.sendMessage({
       action: 'captureElement',
       rect,
-      devicePixelRatio: window.devicePixelRatio || 1
+      devicePixelRatio: window.devicePixelRatio || 1,
+      format: _selectorFormat
     });
   }
 
@@ -299,9 +354,30 @@ if (!window.__captureProLoaded) {
   }
 
   /* ═══════════════════════════════════════════
+     FORMAT HELPERS
+  ═══════════════════════════════════════════ */
+  function _mimeType(fmt) {
+    if (fmt === 'jpeg') return 'image/jpeg';
+    if (fmt === 'webp') return 'image/webp';
+    return 'image/png';
+  }
+
+  function _quality(fmt) {
+    if (fmt === 'jpeg') return 0.92;
+    if (fmt === 'webp') return 0.90;
+    return undefined;
+  }
+
+  function _ext(fmt) {
+    if (fmt === 'jpeg') return 'jpg';
+    if (fmt === 'webp') return 'webp';
+    return 'png';
+  }
+
+  /* ═══════════════════════════════════════════
      CROP (area capture) → panel
   ═══════════════════════════════════════════ */
-  async function _cropToBlob({ dataUrl, rect, dpr }) {
+  async function _cropToBlob({ dataUrl, rect, dpr, format = 'png' }) {
     const img = new Image();
     img.src = dataUrl;
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
@@ -318,13 +394,13 @@ if (!window.__captureProLoaded) {
       0, 0, canvas.width, canvas.height
     );
 
-    return new Promise((res) => canvas.toBlob(res, 'image/png'));
+    return new Promise((res) => canvas.toBlob(res, _mimeType(format), _quality(format)));
   }
 
   /* ═══════════════════════════════════════════
      FULL-PAGE STITCH → panel
   ═══════════════════════════════════════════ */
-  async function _stitchStrips({ strips, totalHeight, viewportHeight, dpr }) {
+  async function _stitchStrips({ strips, totalHeight, viewportHeight, dpr, format = 'png' }) {
     // Load all strip images in parallel
     const images = await Promise.all(strips.map(({ dataUrl }) => {
       const img = new Image();
@@ -351,13 +427,13 @@ if (!window.__captureProLoaded) {
       ctx.drawImage(img, 0, srcY, width, drawH, 0, Math.round(scrollY * dpr), width, drawH);
     });
 
-    return new Promise((res) => canvas.toBlob(res, 'image/png'));
+    return new Promise((res) => canvas.toBlob(res, _mimeType(format), _quality(format)));
   }
 
   /* ═══════════════════════════════════════════
      VIEWPORT CAPTURE — dataUrl → blob → panel
   ═══════════════════════════════════════════ */
-  async function _handleViewportCapture(dataUrl) {
+  async function _handleViewportCapture(dataUrl, format = 'png') {
     const img = new Image();
     img.src = dataUrl;
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
@@ -367,15 +443,29 @@ if (!window.__captureProLoaded) {
     canvas.height = img.naturalHeight;
     canvas.getContext('2d').drawImage(img, 0, 0);
 
-    canvas.toBlob((blob) => showCapturePanel(blob), 'image/png');
+    canvas.toBlob((blob) => showCapturePanel(blob, format), _mimeType(format), _quality(format));
   }
 
   /* ═══════════════════════════════════════════
      VIDEO RECORDING
   ═══════════════════════════════════════════ */
-  let _mediaRecorder = null;
-  let _chunks        = [];
-  let _stopBar       = null;
+  let _mediaRecorder   = null;
+  let _chunks          = [];
+  let _stopBar         = null;
+  let _timerInterval   = null;
+  let _elapsedSeconds  = 0;
+  let _isPaused        = false;
+
+  function _formatTime(secs) {
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function _updateTimerDisplay() {
+    const el = document.getElementById('__cp_timer');
+    if (el) el.textContent = _formatTime(_elapsedSeconds);
+  }
 
   async function startRecording({ tabSound = true, resolution = '720' } = {}) {
     if (_mediaRecorder?.state === 'recording') {
@@ -405,11 +495,17 @@ if (!window.__captureProLoaded) {
         _downloadBlob(blob, `recording-${Date.now()}.webm`);
         stream.getTracks().forEach(t => t.stop());
         _removeStopBar();
+        chrome.runtime.sendMessage({ action: 'recordingStateChanged', recording: false });
         showToast(`Recording saved (${(blob.size / 1_048_576).toFixed(1)} MB)`, 'success');
       };
 
       _mediaRecorder.start(1000);
+      _elapsedSeconds = 0;
+      _isPaused = false;
+      clearInterval(_timerInterval);
+      _timerInterval = setInterval(() => { _elapsedSeconds++; _updateTimerDisplay(); }, 1000);
       _showStopBar();
+      chrome.runtime.sendMessage({ action: 'recordingStateChanged', recording: true });
       showToast('Recording… click ■ Stop or the browser "Stop sharing" bar', 'rec');
 
       stream.getVideoTracks()[0].addEventListener('ended', () => {
@@ -445,9 +541,17 @@ if (!window.__captureProLoaded) {
           padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
         }
         #__cp_stopbtn:hover{background:#d94f4f;}
+        #__cp_pausebtn{
+          background:rgba(240,96,96,0.15);color:#ffaaaa;border:1px solid rgba(240,96,96,0.4);
+          border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
+        }
+        #__cp_pausebtn:hover{background:rgba(240,96,96,0.28);}
+        #__cp_timer{font-family:"SF Mono","Fira Code",monospace;font-size:12px;color:#ffaaaa;min-width:36px;text-align:center;}
       </style>
       <div id="__cp_recdot"></div>
+      <span id="__cp_timer">00:00</span>
       <span>Recording…</span>
+      <button id="__cp_pausebtn">⏸ Pause</button>
       <button id="__cp_stopbtn">■ Stop</button>
     `;
     document.documentElement.appendChild(_stopBar);
@@ -455,30 +559,56 @@ if (!window.__captureProLoaded) {
       e.stopPropagation();
       if (_mediaRecorder?.state !== 'inactive') _mediaRecorder.stop();
     });
+
+    document.getElementById('__cp_pausebtn').addEventListener('click', e => {
+      e.stopPropagation();
+      const btn = document.getElementById('__cp_pausebtn');
+      const dot = document.getElementById('__cp_recdot');
+      if (!_isPaused) {
+        _mediaRecorder?.pause();
+        clearInterval(_timerInterval);
+        _timerInterval = null;
+        _isPaused = true;
+        btn.textContent = '▶ Resume';
+        if (dot) dot.style.animationPlayState = 'paused';
+      } else {
+        _mediaRecorder?.resume();
+        _timerInterval = setInterval(() => { _elapsedSeconds++; _updateTimerDisplay(); }, 1000);
+        _isPaused = false;
+        btn.textContent = '⏸ Pause';
+        if (dot) dot.style.animationPlayState = 'running';
+      }
+    });
   }
 
-  function _removeStopBar() { _stopBar?.remove(); _stopBar = null; }
+  function _removeStopBar() {
+    clearInterval(_timerInterval);
+    _timerInterval = null;
+    _elapsedSeconds = 0;
+    _isPaused = false;
+    _stopBar?.remove();
+    _stopBar = null;
+  }
 
   /* ═══════════════════════════════════════════
      FULL-PAGE CAPTURE — trigger from popup
   ═══════════════════════════════════════════ */
-  function startFullPageCapture() {
-    const totalHeight   = document.documentElement.scrollHeight;
+  function startFullPageCapture(format = 'png') {
+    const totalHeight    = document.documentElement.scrollHeight;
     const viewportHeight = window.innerHeight;
-    const savedScrollY  = window.scrollY;
+    const savedScrollY   = window.scrollY;
 
     showToast('Capturing full page…', 'info');
 
-    // Scroll to top first, then let background drive the loop
     window.scrollTo(0, 0);
     setTimeout(() => {
       chrome.runtime.sendMessage({
         action: 'captureFullPage',
         totalHeight,
         viewportHeight,
-        devicePixelRatio: window.devicePixelRatio || 1
+        devicePixelRatio: window.devicePixelRatio || 1,
+        format
       }, () => {
-        // Restore scroll position after background sends stitchAndShow
         window.scrollTo(0, savedScrollY);
       });
     }, 100);
@@ -502,35 +632,45 @@ if (!window.__captureProLoaded) {
   ═══════════════════════════════════════════ */
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.action) {
-      case 'startAreaSelector':    startAreaSelector();    break;
+      case 'startAreaSelector':
+        _runWithDelay(msg.delay, () => startAreaSelector(msg.format));
+        break;
+      case 'stopRecording':
+        if (_mediaRecorder?.state !== 'inactive') _mediaRecorder.stop();
+        break;
       case 'startRecording':
         startRecording({ tabSound: msg.tabSound, resolution: msg.resolution });
         break;
-      case 'startFullPageCapture': startFullPageCapture(); break;
+      case 'startFullPageCapture':
+        _runWithDelay(msg.delay, () => startFullPageCapture(msg.format));
+        break;
 
       case 'startViewportCapture':
-        showToast('Capturing viewport…', 'info');
-        chrome.runtime.sendMessage({ action: 'captureViewport', devicePixelRatio: window.devicePixelRatio || 1 });
+        _runWithDelay(msg.delay, () => {
+          showToast('Capturing viewport…', 'info');
+          chrome.runtime.sendMessage({ action: 'captureViewport', devicePixelRatio: window.devicePixelRatio || 1, format: msg.format });
+        });
         break;
 
       case 'cropAndCopy':
         if (msg.error) { showToast(`Capture failed: ${msg.error}`, 'error'); break; }
-        _cropToBlob({ dataUrl: msg.dataUrl, rect: msg.rect, dpr: msg.dpr })
-          .then(blob => showCapturePanel(blob));
+        _cropToBlob({ dataUrl: msg.dataUrl, rect: msg.rect, dpr: msg.dpr, format: msg.format })
+          .then(blob => showCapturePanel(blob, msg.format));
         break;
 
       case 'showCapturePanel':
         if (msg.error) { showToast(`Capture failed: ${msg.error}`, 'error'); break; }
-        _handleViewportCapture(msg.dataUrl);
+        _handleViewportCapture(msg.dataUrl, msg.format);
         break;
 
       case 'stitchAndShow':
         _stitchStrips({
-          strips:        msg.strips,
-          totalHeight:   msg.totalHeight,
+          strips:         msg.strips,
+          totalHeight:    msg.totalHeight,
           viewportHeight: msg.viewportHeight,
-          dpr:           msg.dpr
-        }).then(blob => showCapturePanel(blob));
+          dpr:            msg.dpr,
+          format:         msg.format
+        }).then(blob => showCapturePanel(blob, msg.format));
         break;
     }
   });

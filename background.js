@@ -1,10 +1,50 @@
 // Service Worker — handles tab screenshot capture
 
+let _isRecording = false;
+
+function isRestrictedUrl(url) {
+  if (!url) return true;
+  return ['chrome://', 'chrome-extension://', 'edge://', 'about:'].some(p => url.startsWith(p));
+}
+
+chrome.commands.onCommand.addListener(async (command) => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || isRestrictedUrl(tab.url)) return;
+
+  const actionMap = {
+    'capture-area':     { action: 'startAreaSelector' },
+    'capture-viewport': { action: 'startViewportCapture' },
+    'capture-fullpage': { action: 'startFullPageCapture' },
+  };
+
+  if (actionMap[command]) {
+    chrome.tabs.sendMessage(tab.id, actionMap[command]).catch(() => {
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
+        .then(() => chrome.tabs.sendMessage(tab.id, actionMap[command]));
+    });
+    return;
+  }
+
+  if (command === 'toggle-recording') {
+    const msgAction = _isRecording ? 'stopRecording' : 'startRecording';
+    chrome.tabs.sendMessage(tab.id, { action: msgAction }).catch(() => {
+      if (!_isRecording) {
+        chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
+          .then(() => chrome.tabs.sendMessage(tab.id, { action: 'startRecording' }));
+      }
+    });
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'recordingStateChanged') {
+    _isRecording = msg.recording;
+    return;
+  }
 
   // ── Selected-area capture ────────────────────────────────────────────────
   if (msg.action === 'captureElement') {
-    const { rect, devicePixelRatio } = msg;
+    const { rect, devicePixelRatio, format } = msg;
     const tabId    = sender.tab?.id;
     const windowId = sender.tab?.windowId;
 
@@ -15,7 +55,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.tabs.sendMessage(tabId, { action: 'cropAndCopy', error: chrome.runtime.lastError.message });
         return;
       }
-      chrome.tabs.sendMessage(tabId, { action: 'cropAndCopy', dataUrl, rect, dpr: devicePixelRatio || 1 });
+      chrome.tabs.sendMessage(tabId, { action: 'cropAndCopy', dataUrl, rect, dpr: devicePixelRatio || 1, format });
     });
 
     return true;
@@ -23,6 +63,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // ── Visible-viewport capture ─────────────────────────────────────────────
   if (msg.action === 'captureViewport') {
+    const { format } = msg;
     const tabId    = sender.tab?.id;
     const windowId = sender.tab?.windowId;
 
@@ -33,7 +74,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.tabs.sendMessage(tabId, { action: 'showCapturePanel', error: chrome.runtime.lastError.message });
         return;
       }
-      chrome.tabs.sendMessage(tabId, { action: 'showCapturePanel', dataUrl });
+      chrome.tabs.sendMessage(tabId, { action: 'showCapturePanel', dataUrl, format });
     });
 
     return true;
@@ -41,7 +82,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // ── Full-page (scroll-and-stitch) capture ────────────────────────────────
   if (msg.action === 'captureFullPage') {
-    const { totalHeight, viewportHeight, devicePixelRatio } = msg;
+    const { totalHeight, viewportHeight, devicePixelRatio, format } = msg;
     const tabId    = sender.tab?.id;
     const windowId = sender.tab?.windowId;
 
@@ -77,7 +118,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             strips,
             totalHeight: clampedH,
             viewportHeight,
-            dpr
+            dpr,
+            format
           });
         }
       });
