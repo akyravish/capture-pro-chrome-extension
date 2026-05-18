@@ -89,18 +89,18 @@ document.querySelectorAll('.source-card').forEach(card => {
 });
 
 // ── Format buttons ────────────────────────────────────────────────────────────
-document.querySelectorAll('[data-format]').forEach(btn => {
+document.querySelectorAll('.format-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-format]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.format = btn.dataset.format;
   });
 });
 
 // ── Delay buttons ─────────────────────────────────────────────────────────────
-document.querySelectorAll('[data-delay]').forEach(btn => {
+document.querySelectorAll('.delay-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-delay]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.delay-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.delay = parseInt(btn.dataset.delay, 10);
   });

@@ -155,33 +155,23 @@ if (!window.__captureProLoaded) {
     if (!seconds || seconds <= 0) { action(); return; }
 
     let remaining = seconds;
+    let cancelled = false;
 
-    const overlay = document.createElement('div');
-    overlay.id = '__cp_countdown';
-    overlay.style.cssText = `
-      position: fixed; inset: 0; z-index: 2147483646;
-      background: rgba(5,4,18,0.72);
-      display: flex; align-items: center; justify-content: center;
-      font-family: system-ui, sans-serif;
-    `;
-    overlay.innerHTML = `
-      <div style="
-        font-size: 96px; font-weight: 800; color: #fff;
-        text-shadow: 0 0 40px rgba(124,106,247,0.8);
-        line-height: 1; user-select: none;
-      " id="__cp_countdown_num">${remaining}</div>
-    `;
-    document.documentElement.appendChild(overlay);
+    function _updateToast() {
+      showToast(`Capturing in ${remaining}s… (Esc to cancel)`, 'info');
+    }
+
+    _updateToast();
 
     function tick() {
+      if (cancelled) return;
       remaining--;
       if (remaining <= 0) {
-        overlay.remove();
         _pendingCaptureTimeout = null;
         action();
         return;
       }
-      document.getElementById('__cp_countdown_num').textContent = remaining;
+      _updateToast();
       _pendingCaptureTimeout = setTimeout(tick, 1000);
     }
 
@@ -189,9 +179,9 @@ if (!window.__captureProLoaded) {
 
     function _cancelOnEsc(e) {
       if (e.key !== 'Escape') return;
+      cancelled = true;
       clearTimeout(_pendingCaptureTimeout);
       _pendingCaptureTimeout = null;
-      overlay.remove();
       document.removeEventListener('keydown', _cancelOnEsc, true);
       showToast('Capture cancelled', 'info');
     }

@@ -110,7 +110,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             target: { tabId },
             func: (y) => window.scrollTo(0, y),
             args: [scrollY]
-          }).then(() => setTimeout(captureNext, 150));
+          }).then(() => setTimeout(captureNext, 500));
         } else {
           // All strips collected — stitch in content script
           chrome.tabs.sendMessage(tabId, {
